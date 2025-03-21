@@ -9,78 +9,122 @@
       padding: 0;
       box-sizing: border-box;
     }
-
     body, html {
       width: 100%;
       height: 100%;
       overflow: hidden;
       background: #000;
     }
-
     canvas {
       display: block;
+      filter: blur(1px);
+    }
+    
+    /* Glow-Effekt an den Seiten */
+    body::before, body::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      width: 20%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    body::before {
+      left: 0;
+      background: radial-gradient(ellipse at left, rgba(255, 0, 0, 0.3), transparent 70%);
+    }
+    
+    body::after {
+      right: 0;
+      background: radial-gradient(ellipse at right, rgba(255, 0, 0, 0.3), transparent 70%);
     }
   </style>
 </head>
 <body>
   <canvas id="particleCanvas"></canvas>
-
   <script>
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');
-
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-
+    
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     });
-
+    
     const particles = [];
-
+    const redColor = '#ff3030';
+    
     class Particle {
       constructor() {
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 4 + 1;
-        this.speedX = (Math.random() - 0.5) * 2;
-        this.speedY = (Math.random() - 0.5) * 2;
+        this.size = Math.random() * 3 + 1;
+        this.speedX = (Math.random() - 0.5) * 0.7; // Reduzierte Geschwindigkeit
+        this.speedY = (Math.random() - 0.5) * 0.7; // Reduzierte Geschwindigkeit
+        this.alpha = Math.random() * 0.5 + 0.3;
+        this.pulseSpeed = Math.random() * 0.03 + 0.01;
+        this.pulseDirection = Math.random() > 0.5 ? 1 : -1;
       }
-
+      
       update() {
         this.x += this.speedX;
         this.y += this.speedY;
-
+        
+        // Pulsierender Effekt
+        this.alpha += this.pulseSpeed * this.pulseDirection;
+        if (this.alpha > 0.8 || this.alpha < 0.3) {
+          this.pulseDirection *= -1;
+        }
+        
         if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
         if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
       }
-
+      
       draw() {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.save();
+        
+        // Glow-Effekt
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = redColor;
+        
+        // Hauptpartikel
+        ctx.fillStyle = `rgba(255, 30, 30, ${this.alpha})`;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.closePath();
         ctx.fill();
+        
+        ctx.restore();
       }
     }
-
+    
     function createParticles(count) {
       for (let i = 0; i < count; i++) {
         particles.push(new Particle());
       }
     }
-
+    
     function drawLines() {
+      ctx.save();
+      
       for (let a = 0; a < particles.length; a++) {
         for (let b = a + 1; b < particles.length; b++) {
           const dx = particles[a].x - particles[b].x;
           const dy = particles[a].y - particles[b].y;
           const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < 150) {
-            ctx.strokeStyle = `rgba(255, 255, 255, ${1 - distance / 150})`;
-            ctx.lineWidth = 0.8;
+          
+          if (distance < 180) {
+            const opacity = 1 - distance / 180;
+            ctx.strokeStyle = `rgba(255, 30, 30, ${opacity * 0.5})`;
+            ctx.lineWidth = 0.5;
+            
+            // Glow für Linien
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = redColor;
+            
             ctx.beginPath();
             ctx.moveTo(particles[a].x, particles[a].y);
             ctx.lineTo(particles[b].x, particles[b].y);
@@ -88,22 +132,25 @@
           }
         }
       }
+      
+      ctx.restore();
     }
-
+    
     function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+      // Sanfteres Löschen für Trailing-Effekt
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
       particles.forEach(particle => {
         particle.update();
         particle.draw();
       });
-
+      
       drawLines();
-
       requestAnimationFrame(animate);
     }
-
-    createParticles(120);
+    
+    createParticles(80); // Reduzierte Anzahl für bessere Performance
     animate();
   </script>
 </body>
